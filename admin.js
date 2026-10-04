@@ -1,21 +1,53 @@
 /* =========================================================
    DL LUXURY
    SISTEMA DE ADMINISTRACIÓN
+   SCRIPT PRINCIPAL
+
+   ESTE ARCHIVO MANEJA:
+
+   - Inicio
+   - Ingresos
+   - Ventas
+   - Egresos
+   - Stock
+   - Dashboard
+   - Pedidos
+   - Confirmar compra
+   - Descontar stock automáticamente
+   - Dar puntos
+   - Datos económicos de pedidos confirmados
+
+   =========================================================
+
+   STOCK:
+
+   AL CONFIRMAR UNA COMPRA:
+
+   1. Se obtiene el pedido.
+   2. Se revisan sus productos.
+   3. Se verifica que exista stock suficiente.
+   4. Se descuenta la cantidad comprada.
+   5. Se confirma el pedido.
+   6. Se actualiza el Dashboard.
+
+   =========================================================
 
    PUNTOS:
-   5% DEL TOTAL DE LA COMPRA
 
-   Q100   = 5 puntos
-   Q200   = 10 puntos
-   Q500   = 25 puntos
-   Q1000  = 50 puntos
-   Q1040  = 52 puntos
-   Q2000  = 100 puntos
-
-   1 PUNTO = Q1
+   Q10    = 1 punto
+   Q20    = 2 puntos
+   Q50    = 5 puntos
+   Q100   = 10 puntos
+   Q500   = 50 puntos
+   Q1000  = 100 puntos
 
    FÓRMULA:
-   Math.floor(total * 0.05)
+
+   Math.floor(total / 10)
+
+   LÍMITE:
+
+   SIN LÍMITE DE PUNTOS POR COMPRA.
 ========================================================= */
 
 
@@ -139,9 +171,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function obtenerAno(fecha) {
 
         if (!fecha) {
-
-            return new Date()
-                .getFullYear();
+            return new Date().getFullYear();
         }
 
         const fechaObj =
@@ -152,12 +182,45 @@ document.addEventListener("DOMContentLoaded", function () {
                 fechaObj.getTime()
             )
         ) {
-
-            return new Date()
-                .getFullYear();
+            return new Date().getFullYear();
         }
 
         return fechaObj.getFullYear();
+    }
+
+
+    /* =====================================================
+       CALCULAR PUNTOS
+
+       REGLA ACTUAL:
+
+       1 PUNTO POR CADA Q10.
+
+       Q10   = 1
+       Q20   = 2
+       Q50   = 5
+       Q100  = 10
+       Q500  = 50
+       Q1000 = 100
+
+       SIN LÍMITE.
+    ===================================================== */
+
+    function calcularPuntos(total) {
+
+        const monto =
+            Number(total) || 0;
+
+        if (
+            !Number.isFinite(monto) ||
+            monto < 10
+        ) {
+            return 0;
+        }
+
+        return Math.floor(
+            monto / 10
+        );
     }
 
 
@@ -284,7 +347,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     );
 
-
             if (error) {
 
                 console.error(
@@ -295,9 +357,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return [];
             }
 
-
             return data || [];
-
 
         } catch (error) {
 
@@ -333,7 +393,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     );
 
-
             if (error) {
 
                 console.error(
@@ -346,7 +405,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     error: error
                 };
             }
-
 
             return {
                 data: data || [],
@@ -375,7 +433,6 @@ document.addEventListener("DOMContentLoaded", function () {
     function obtenerProductosPedido(pedido) {
 
         let productos = [];
-
 
         try {
 
@@ -417,7 +474,6 @@ document.addEventListener("DOMContentLoaded", function () {
             productos = [];
         }
 
-
         return Array.isArray(productos)
             ? productos
             : [];
@@ -425,7 +481,64 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     /* =====================================================
-       OBTENER CANTIDAD DE PRODUCTOS
+       OBTENER ID DE PRODUCTO
+    ===================================================== */
+
+    function obtenerIdProductoPedido(producto) {
+
+        return (
+            producto?.producto_id ??
+            producto?.id_producto ??
+            producto?.product_id ??
+            producto?.id ??
+            null
+        );
+    }
+
+
+    /* =====================================================
+       OBTENER NOMBRE DEL PRODUCTO
+    ===================================================== */
+
+    function obtenerNombreProductoPedido(producto) {
+
+        return (
+            producto?.nombre ||
+            producto?.name ||
+            producto?.producto ||
+            producto?.product_name ||
+            ""
+        );
+    }
+
+
+    /* =====================================================
+       OBTENER CANTIDAD
+    ===================================================== */
+
+    function obtenerCantidadProducto(producto) {
+
+        const cantidad =
+            Number(
+                producto?.cantidad ??
+                producto?.quantity ??
+                producto?.qty ??
+                1
+            );
+
+        if (
+            !Number.isFinite(cantidad) ||
+            cantidad <= 0
+        ) {
+            return 1;
+        }
+
+        return Math.floor(cantidad);
+    }
+
+
+    /* =====================================================
+       CANTIDAD TOTAL DE PRODUCTOS
     ===================================================== */
 
     function obtenerCantidadProductosPedido(pedido) {
@@ -435,25 +548,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 pedido
             );
 
-
-        let cantidadTotal =
-            0;
-
+        let cantidadTotal = 0;
 
         productos.forEach(
             function (producto) {
 
-                const cantidad =
-                    Number(
-                        producto?.cantidad
-                    ) || 1;
-
-
                 cantidadTotal +=
-                    cantidad;
+                    obtenerCantidadProducto(
+                        producto
+                    );
             }
         );
-
 
         return cantidadTotal;
     }
@@ -470,24 +575,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 pedido?.total
             );
 
-
         if (
             Number.isFinite(total)
         ) {
-
             return total;
         }
-
 
         const productos =
             obtenerProductosPedido(
                 pedido
             );
 
-
-        let totalCalculado =
-            0;
-
+        let totalCalculado = 0;
 
         productos.forEach(
             function (producto) {
@@ -500,18 +599,15 @@ document.addEventListener("DOMContentLoaded", function () {
                         0
                     );
 
-
                 const cantidad =
-                    Number(
-                        producto?.cantidad
-                    ) || 1;
-
+                    obtenerCantidadProducto(
+                        producto
+                    );
 
                 totalCalculado +=
                     precio * cantidad;
             }
         );
-
 
         return totalCalculado;
     }
@@ -546,7 +642,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 descuentos:
                     "descuentos.html"
-
             };
 
 
@@ -566,7 +661,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     ".seccion"
                 );
 
-
             secciones.forEach(
                 function (seccion) {
 
@@ -582,7 +676,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     id
                 );
 
-
             if (seccion) {
 
                 seccion.classList.add(
@@ -595,7 +688,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.querySelectorAll(
                     ".menu"
                 );
-
 
             menus.forEach(
                 function (menu) {
@@ -663,6 +755,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 return;
             }
+
+
+            if (
+                id === "pedidos"
+            ) {
+
+                cargarPedidos();
+
+                return;
+            }
         };
 
 
@@ -678,23 +780,18 @@ document.addEventListener("DOMContentLoaded", function () {
                     "modalEgreso"
                 );
 
-
             const formulario =
                 document.getElementById(
                     "formEgreso"
                 );
 
-
             if (!modal) {
                 return;
             }
 
-
             if (formulario) {
-
                 formulario.reset();
             }
-
 
             modal.style.display =
                 "flex";
@@ -713,11 +810,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     "modalEgreso"
                 );
 
-
             if (!modal) {
                 return;
             }
-
 
             modal.style.display =
                 "none";
@@ -858,7 +953,6 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById(
                 "listaEgresos"
             );
-
 
         if (!contenedor) {
             return;
@@ -1001,7 +1095,6 @@ document.addEventListener("DOMContentLoaded", function () {
             !stockTotalElemento &&
             !stockBajoElemento
         ) {
-
             return;
         }
 
@@ -1033,11 +1126,14 @@ document.addEventListener("DOMContentLoaded", function () {
                         <tr>
                             <td colspan="5">
                                 Error al cargar el inventario.
+                                <br>
+                                ${escaparHTML(
+                        error.message
+                    )}
                             </td>
                         </tr>
                     `;
                 }
-
 
                 return;
             }
@@ -1055,12 +1151,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     );
 
 
-            let stockTotal =
-                0;
+            let stockTotal = 0;
 
-
-            let stockBajo =
-                0;
+            let stockBajo = 0;
 
 
             productos.forEach(
@@ -1209,33 +1302,50 @@ document.addEventListener("DOMContentLoaded", function () {
                 "❌ Error inesperado cargando stock:",
                 error
             );
+
+
+            if (tabla) {
+
+                tabla.innerHTML = `
+                    <tr>
+                        <td colspan="5">
+                            Error inesperado al cargar el inventario.
+                        </td>
+                    </tr>
+                `;
+            }
         }
     }
 
 
     /* =====================================================
        NOMBRE DE CATEGORÍA
+
+       Playeras = 2
+       Gorras = 3
+       Hoodies = 4
+       Perfumes = 5
+       Accesorios = 6
     ===================================================== */
 
     function obtenerNombreCategoria(categoriaId) {
 
         const categorias = {
 
-            1:
-                "Gorras",
-
             2:
                 "Playeras",
 
             3:
-                "Hoodies",
+                "Gorras",
 
             4:
-                "Perfumes",
+                "Hoodies",
 
             5:
-                "Accesorios"
+                "Perfumes",
 
+            6:
+                "Accesorios"
         };
 
 
@@ -1457,12 +1567,9 @@ document.addEventListener("DOMContentLoaded", function () {
             );
 
 
-        let totalIngresos =
-            0;
+        let totalIngresos = 0;
 
-
-        let cantidadIngresos =
-            0;
+        let cantidadIngresos = 0;
 
 
         pedidosAño.forEach(
@@ -1472,7 +1579,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     Number(
                         pedido.total || 0
                     );
-
 
                 cantidadIngresos++;
             }
@@ -1494,8 +1600,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
 
 
-        let totalEgresos =
-            0;
+        let totalEgresos = 0;
 
 
         egresos.forEach(
@@ -1697,6 +1802,12 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
 
+        console.log(
+            "🔄 Actualizando Dashboard para el año:",
+            anoActual
+        );
+
+
         const pedidos =
             await obtenerPedidosConfirmados();
 
@@ -1730,16 +1841,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
 
 
-        let totalVentas =
-            0;
+        let totalVentas = 0;
 
+        let totalEgresos = 0;
 
-        let totalEgresos =
-            0;
-
-
-        let productosVendidos =
-            0;
+        let productosVendidos = 0;
 
 
         pedidosAño.forEach(
@@ -1848,13 +1954,19 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
 
+        /* =========================================
+           ACTUALIZAR STOCK
+        ========================================= */
+
+        await cargarStock();
+
+
         cargarTablaVentasAno(
             pedidosAño
         );
 
 
         await cargarIngresos();
-
     }
 
 
@@ -1967,6 +2079,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* =====================================================
        SELECTOR DE AÑOS
+
+       2026 - 2067
     ===================================================== */
 
     async function llenarSelectorAnios() {
@@ -2181,6 +2295,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 return false;
                             }
 
+
                             return (
                                 obtenerAno(
                                     pedido.creado_en
@@ -2340,21 +2455,22 @@ document.addEventListener("DOMContentLoaded", function () {
                         function (producto) {
 
                             const nombre =
-                                producto?.nombre ||
-                                producto?.name ||
+                                obtenerNombreProductoPedido(
+                                    producto
+                                ) ||
                                 "Producto";
 
 
                             const cantidadProducto =
-                                Number(
-                                    producto?.cantidad
-                                ) || 1;
+                                obtenerCantidadProducto(
+                                    producto
+                                );
 
 
                             return `
                                 <div style="
-                                    margin:5px 0;
-                                    color:#ccc;
+                                    margin: 5px 0;
+                                    color: #ccc;
                                 ">
 
                                     <i class="fa-solid fa-box"></i>
@@ -2380,6 +2496,10 @@ document.addEventListener("DOMContentLoaded", function () {
             `;
         }
 
+
+        /* =================================================
+           ESTADO
+        ================================================= */
 
         let estadoHTML =
             "";
@@ -2424,6 +2544,10 @@ document.addEventListener("DOMContentLoaded", function () {
             `;
         }
 
+
+        /* =================================================
+           BOTÓN CONFIRMAR
+        ================================================= */
 
         let botonConfirmar =
             "";
@@ -2483,6 +2607,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
 
+        /* =================================================
+           BOTÓN PUNTOS
+        ================================================= */
+
         let botonPuntos =
             "";
 
@@ -2511,9 +2639,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 </button>
             `;
 
-        } else if (
-            puntosValidados
-        ) {
+        } else if (puntosValidados) {
 
             botonPuntos = `
                 <button
@@ -2541,8 +2667,8 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
 
             const puntosCalculados =
-                Math.floor(
-                    total * 0.05
+                calcularPuntos(
+                    total
                 );
 
 
@@ -2604,6 +2730,10 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
+
+        /* =================================================
+           HTML TARJETA
+        ================================================= */
 
         tarjeta.innerHTML = `
 
@@ -2782,7 +2912,570 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     /* =====================================================
+       PREPARAR PRODUCTOS PARA STOCK
+    ===================================================== */
+
+    function prepararProductosParaStock(pedido) {
+
+        const productos =
+            obtenerProductosPedido(
+                pedido
+            );
+
+
+        const productosAgrupados =
+            new Map();
+
+
+        productos.forEach(
+            function (producto) {
+
+                const id =
+                    obtenerIdProductoPedido(
+                        producto
+                    );
+
+
+                const nombre =
+                    obtenerNombreProductoPedido(
+                        producto
+                    );
+
+
+                const cantidad =
+                    obtenerCantidadProducto(
+                        producto
+                    );
+
+
+                /*
+                   SI EXISTE ID:
+                   USAMOS EL ID.
+
+                   SI NO:
+                   USAMOS EL NOMBRE COMO RESPALDO.
+                */
+
+                const clave =
+                    id !== null &&
+                        id !== undefined &&
+                        id !== ""
+                        ? "id:" + String(id)
+                        : "nombre:" +
+                        String(nombre)
+                            .trim()
+                            .toLowerCase();
+
+
+                if (
+                    productosAgrupados.has(
+                        clave
+                    )
+                ) {
+
+                    const existente =
+                        productosAgrupados.get(
+                            clave
+                        );
+
+
+                    existente.cantidad +=
+                        cantidad;
+
+                } else {
+
+                    productosAgrupados.set(
+                        clave,
+                        {
+                            id:
+                                id,
+
+                            nombre:
+                                nombre,
+
+                            cantidad:
+                                cantidad
+                        }
+                    );
+                }
+            }
+        );
+
+
+        return Array.from(
+            productosAgrupados.values()
+        );
+    }
+
+
+    /* =====================================================
+       BUSCAR PRODUCTO REAL EN SUPABASE
+    ===================================================== */
+
+    async function buscarProductoParaStock(
+        productoPedido
+    ) {
+
+        const id =
+            productoPedido.id;
+
+
+        const nombre =
+            productoPedido.nombre;
+
+
+        /*
+           PRIMERA OPCIÓN:
+           BUSCAR POR ID.
+        */
+
+        if (
+            id !== null &&
+            id !== undefined &&
+            id !== ""
+        ) {
+
+            const {
+                data,
+                error
+            } =
+                await supabaseClient
+                    .from("productos")
+                    .select(
+                        "id,nombre,stock,activo"
+                    )
+                    .eq(
+                        "id",
+                        id
+                    )
+                    .maybeSingle();
+
+
+            if (error) {
+
+                console.error(
+                    "❌ Error buscando producto por ID:",
+                    error
+                );
+
+
+                throw new Error(
+                    "No se pudo buscar el producto con ID " +
+                    id +
+                    ". " +
+                    error.message
+                );
+            }
+
+
+            if (data) {
+
+                return data;
+            }
+        }
+
+
+        /*
+           SEGUNDA OPCIÓN:
+           BUSCAR POR NOMBRE.
+        */
+
+        if (
+            nombre &&
+            String(nombre).trim()
+        ) {
+
+            const {
+                data,
+                error
+            } =
+                await supabaseClient
+                    .from("productos")
+                    .select(
+                        "id,nombre,stock,activo"
+                    )
+                    .ilike(
+                        "nombre",
+                        String(nombre).trim()
+                    )
+                    .limit(1);
+
+
+            if (error) {
+
+                console.error(
+                    "❌ Error buscando producto por nombre:",
+                    error
+                );
+
+
+                throw new Error(
+                    "No se pudo buscar el producto " +
+                    nombre +
+                    ". " +
+                    error.message
+                );
+            }
+
+
+            if (
+                data &&
+                data.length > 0
+            ) {
+
+                return data[0];
+            }
+        }
+
+
+        return null;
+    }
+
+
+    /* =====================================================
+       RESTAURAR STOCK
+    ===================================================== */
+
+    async function restaurarStock(
+        productos
+    ) {
+
+        if (
+            !Array.isArray(productos)
+        ) {
+            return;
+        }
+
+
+        for (
+            const producto
+            of productos
+        ) {
+
+            try {
+
+                const {
+                    error
+                } =
+                    await supabaseClient
+                        .from("productos")
+                        .update({
+                            stock:
+                                producto.stockAnterior
+                        })
+                        .eq(
+                            "id",
+                            producto.id
+                        );
+
+
+                if (error) {
+
+                    console.error(
+                        "❌ Error restaurando stock:",
+                        producto,
+                        error
+                    );
+                }
+
+            } catch (error) {
+
+                console.error(
+                    "❌ Error restaurando stock:",
+                    producto,
+                    error
+                );
+            }
+        }
+    }
+
+
+    /* =====================================================
+       DESCONTAR STOCK DE UNA COMPRA
+
+       PASO 1:
+       Buscar todos los productos.
+
+       PASO 2:
+       Verificar TODO el stock.
+
+       PASO 3:
+       Si todo está correcto,
+       descontar.
+
+       PASO 4:
+       Si falla algo,
+       restaurar lo anterior.
+
+       IMPORTANTE:
+
+       El UPDATE ya NO utiliza:
+
+       .select()
+       .maybeSingle()
+
+       porque eso podía provocar falsos errores
+       aunque Supabase hubiera realizado el UPDATE.
+    ===================================================== */
+
+    async function descontarStockPedido(pedido) {
+
+        const productosPedido =
+            prepararProductosParaStock(
+                pedido
+            );
+
+
+        if (
+            productosPedido.length === 0
+        ) {
+
+            throw new Error(
+                "El pedido no contiene productos."
+            );
+        }
+
+
+        console.log(
+            "📦 Productos a descontar:",
+            productosPedido
+        );
+
+
+        const productosEncontrados =
+            [];
+
+
+        /* ==========================================
+           PASO 1
+           BUSCAR TODOS
+        ========================================== */
+
+        for (
+            const productoPedido
+            of productosPedido
+        ) {
+
+            const producto =
+                await buscarProductoParaStock(
+                    productoPedido
+                );
+
+
+            if (!producto) {
+
+                throw new Error(
+                    "No se encontró en el inventario el producto: " +
+                    (
+                        productoPedido.nombre ||
+                        productoPedido.id ||
+                        "Producto desconocido"
+                    )
+                );
+            }
+
+
+            if (
+                producto.activo === false
+            ) {
+
+                throw new Error(
+                    "El producto " +
+                    producto.nombre +
+                    " está desactivado."
+                );
+            }
+
+
+            const stockActual =
+                Number(
+                    producto.stock
+                );
+
+
+            if (
+                !Number.isFinite(
+                    stockActual
+                )
+            ) {
+
+                throw new Error(
+                    "El producto " +
+                    producto.nombre +
+                    " tiene un stock inválido."
+                );
+            }
+
+
+            const cantidadNecesaria =
+                Number(
+                    productoPedido.cantidad
+                );
+
+
+            if (
+                !Number.isFinite(
+                    cantidadNecesaria
+                ) ||
+                cantidadNecesaria <= 0
+            ) {
+
+                throw new Error(
+                    "La cantidad del producto " +
+                    producto.nombre +
+                    " no es válida."
+                );
+            }
+
+
+            /* ==========================================
+               VERIFICAR STOCK
+            ========================================== */
+
+            if (
+                stockActual <
+                cantidadNecesaria
+            ) {
+
+                throw new Error(
+                    "Stock insuficiente para " +
+                    producto.nombre +
+                    ".\n\n" +
+                    "Stock disponible: " +
+                    stockActual +
+                    "\n" +
+                    "Cantidad solicitada: " +
+                    cantidadNecesaria
+                );
+            }
+
+
+            productosEncontrados.push({
+
+                id:
+                    producto.id,
+
+                nombre:
+                    producto.nombre,
+
+                stockAnterior:
+                    stockActual,
+
+                cantidad:
+                    cantidadNecesaria,
+
+                stockNuevo:
+                    stockActual -
+                    cantidadNecesaria
+            });
+        }
+
+
+        /* ==========================================
+           PASO 2
+           ACTUALIZAR TODOS
+
+           IMPORTANTE:
+           NO usar .select().maybeSingle()
+           después del update.
+        ========================================== */
+
+        const actualizados = [];
+
+
+        try {
+
+            for (
+                const producto
+                of productosEncontrados
+            ) {
+
+                const {
+                    error
+                } =
+                    await supabaseClient
+                        .from("productos")
+                        .update({
+
+                            stock:
+                                producto.stockNuevo
+
+                        })
+                        .eq(
+                            "id",
+                            producto.id
+                        );
+
+
+                if (error) {
+
+                    console.error(
+                        "❌ Error descontando stock:",
+                        error
+                    );
+
+                    throw new Error(
+                        "No se pudo actualizar el stock de " +
+                        producto.nombre +
+                        ".\n\n" +
+                        error.message
+                    );
+                }
+
+
+                /*
+                   IMPORTANTE:
+
+                   Si Supabase no devuelve error,
+                   consideramos exitoso el UPDATE.
+
+                   No exigimos que data exista.
+                */
+
+                actualizados.push(
+                    producto
+                );
+
+
+                console.log(
+                    "✅ Stock actualizado:",
+                    producto.nombre,
+                    producto.stockAnterior,
+                    "→",
+                    producto.stockNuevo
+                );
+            }
+
+
+        } catch (error) {
+
+            /*
+               SI FALLA UN PRODUCTO,
+               RESTAURAMOS LOS ANTERIORES.
+            */
+
+            console.log(
+                "🔄 Restaurando stock..."
+            );
+
+
+            await restaurarStock(
+                actualizados
+            );
+
+
+            throw error;
+        }
+
+
+        return actualizados;
+    }
+
+
+    /* =====================================================
        CONFIRMAR COMPRA
+
+       AQUÍ SE DESCUENTA EL STOCK
     ===================================================== */
 
     window.confirmarCompra =
@@ -2792,7 +3485,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const confirmar =
                 window.confirm(
-                    "¿Deseas confirmar esta compra?"
+                    "¿Deseas confirmar esta compra?\n\n" +
+                    "Al confirmar se descontará automáticamente " +
+                    "el stock de los productos."
                 );
 
 
@@ -2802,6 +3497,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
             try {
+
+                /* ==========================================
+                   1. OBTENER PEDIDO
+                ========================================== */
 
                 const {
                     data: pedido,
@@ -2830,6 +3529,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         errorPedido.message
                     );
 
+
                     return;
                 }
 
@@ -2840,9 +3540,14 @@ document.addEventListener("DOMContentLoaded", function () {
                         "El pedido no existe."
                     );
 
+
                     return;
                 }
 
+
+                /* ==========================================
+                   2. EVITAR DOBLE DESCUENTO
+                ========================================== */
 
                 if (
                     String(
@@ -2852,18 +3557,80 @@ document.addEventListener("DOMContentLoaded", function () {
                 ) {
 
                     alert(
-                        "Este pedido ya está confirmado."
+                        "Este pedido ya está confirmado.\n\n" +
+                        "El stock no se volverá a descontar."
                     );
 
 
                     await cargarPedidos();
 
+
                     return;
                 }
 
 
+                /* ==========================================
+                   3. VERIFICAR PRODUCTOS
+                ========================================== */
+
+                const productosPedido =
+                    obtenerProductosPedido(
+                        pedido
+                    );
+
+
+                if (
+                    productosPedido.length === 0
+                ) {
+
+                    alert(
+                        "No se puede confirmar este pedido porque no contiene productos."
+                    );
+
+
+                    return;
+                }
+
+
+                /* ==========================================
+                   4. DESCONTAR STOCK
+                ========================================== */
+
+                let productosDescontados =
+                    [];
+
+
+                try {
+
+                    productosDescontados =
+                        await descontarStockPedido(
+                            pedido
+                        );
+
+                } catch (errorStock) {
+
+                    console.error(
+                        "❌ No se pudo descontar stock:",
+                        errorStock
+                    );
+
+
+                    alert(
+                        "NO SE CONFIRMÓ LA COMPRA.\n\n" +
+                        errorStock.message
+                    );
+
+
+                    return;
+                }
+
+
+                /* ==========================================
+                   5. CONFIRMAR PEDIDO
+                ========================================== */
+
                 const {
-                    error
+                    error: errorConfirmar
                 } =
                     await supabaseClient
                         .from("pedidos")
@@ -2882,27 +3649,55 @@ document.addEventListener("DOMContentLoaded", function () {
                         );
 
 
-                if (error) {
+                if (errorConfirmar) {
 
                     console.error(
                         "❌ Error confirmando pedido:",
-                        error
+                        errorConfirmar
+                    );
+
+
+                    /*
+                       RESTAURAR STOCK
+                    */
+
+                    console.log(
+                        "🔄 Intentando devolver stock porque la confirmación falló..."
+                    );
+
+
+                    await restaurarStock(
+                        productosDescontados
                     );
 
 
                     alert(
                         "No se pudo confirmar el pedido.\n\n" +
-                        error.message
+                        errorConfirmar.message +
+                        "\n\n" +
+                        "El stock fue restaurado."
                     );
+
 
                     return;
                 }
 
 
+                /* ==========================================
+                   6. ÉXITO
+                ========================================== */
+
                 alert(
-                    "Compra confirmada correctamente."
+                    "COMPRA CONFIRMADA CORRECTAMENTE.\n\n" +
+                    "El stock fue descontado automáticamente."
                 );
 
+
+                /* ==========================================
+                   7. RECARGAR TODO
+                ========================================== */
+
+                await cargarStock();
 
                 await cargarPedidos();
 
@@ -2920,7 +3715,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
                 alert(
-                    "Ocurrió un error al confirmar la compra."
+                    "Ocurrió un error al confirmar la compra.\n\n" +
+                    error.message
                 );
             }
         };
@@ -2928,12 +3724,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     /* =====================================================
        DAR PUNTOS
-       
-       5% DEL TOTAL
-       1 PUNTO = Q1
 
-       ESTA VERSIÓN PERMITE ENCONTRAR EL PERFIL
-       DE DIFERENTES FORMAS.
+       REGLA:
+
+       1 PUNTO POR CADA Q10.
+
+       SIN LÍMITE.
     ===================================================== */
 
     window.darPuntos =
@@ -2943,7 +3739,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const confirmar =
                 window.confirm(
-                    "¿Deseas generar los puntos de esta compra?"
+                    "¿Deseas otorgar los puntos de esta compra?"
                 );
 
 
@@ -2954,9 +3750,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             try {
 
-                /* =========================================
+                /* ==========================================
                    1. OBTENER PEDIDO
-                ========================================= */
+                ========================================== */
 
                 const {
                     data: pedido,
@@ -2985,6 +3781,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         errorPedido.message
                     );
 
+
                     return;
                 }
 
@@ -2995,56 +3792,54 @@ document.addEventListener("DOMContentLoaded", function () {
                         "El pedido no existe."
                     );
 
+
                     return;
                 }
 
 
-                /* =========================================
-                   2. VERIFICAR ESTADO
-                ========================================= */
-
-                const estado =
-                    String(
-                        pedido.estado || ""
-                    )
-                        .trim()
-                        .toLowerCase();
-
+                /* ==========================================
+                   2. VERIFICAR CONFIRMACIÓN
+                ========================================== */
 
                 if (
-                    estado !== "confirmada"
+                    String(
+                        pedido.estado || ""
+                    ).toLowerCase() !==
+                    "confirmada"
                 ) {
 
                     alert(
                         "Primero debes confirmar la compra."
                     );
 
+
                     return;
                 }
 
 
-                /* =========================================
-                   3. EVITAR DUPLICAR
-                ========================================= */
+                /* ==========================================
+                   3. EVITAR DOBLE PUNTUACIÓN
+                ========================================== */
 
                 if (
                     pedido.puntos_validados === true
                 ) {
 
                     alert(
-                        "Los puntos de este pedido ya fueron generados."
+                        "Los puntos de este pedido ya fueron otorgados."
                     );
 
 
                     await cargarPedidos();
 
+
                     return;
                 }
 
 
-                /* =========================================
-                   4. OBTENER TOTAL
-                ========================================= */
+                /* ==========================================
+                   4. CALCULAR PUNTOS
+                ========================================== */
 
                 const total =
                     obtenerTotalPedido(
@@ -3052,26 +3847,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     );
 
 
-                if (
-                    !Number.isFinite(total) ||
-                    total <= 0
-                ) {
-
-                    alert(
-                        "Este pedido no tiene un total válido."
-                    );
-
-                    return;
-                }
-
-
-                /* =========================================
-                   5. CALCULAR 5%
-                ========================================= */
-
                 const puntos =
-                    Math.floor(
-                        total * 0.05
+                    calcularPuntos(
+                        total
                     );
 
 
@@ -3081,324 +3859,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     alert(
                         "Esta compra no genera puntos.\n\n" +
-                        "El total mínimo es Q20.00."
-                    );
-
-                    return;
-                }
-
-
-                console.log(
-                    "⭐ GENERANDO PUNTOS",
-                    {
-                        pedido:
-                            pedido.id,
-
-                        total:
-                            total,
-
-                        puntos:
-                            puntos,
-
-                        pedidoCompleto:
-                            pedido
-                    }
-                );
-
-
-                /* =========================================
-                   6. BUSCAR ID DEL CLIENTE
-                ========================================= */
-
-                let usuarioId =
-                    pedido.usuario_id ||
-                    pedido.user_id ||
-                    pedido.cliente_id ||
-                    pedido.perfil_id ||
-                    null;
-
-
-                let perfil = null;
-
-
-                console.log(
-                    "🔎 Usuario ID inicial:",
-                    usuarioId
-                );
-
-
-                /* =========================================
-                   7. BUSCAR PERFIL POR ID
-                ========================================= */
-
-                if (
-                    usuarioId
-                ) {
-
-                    const {
-                        data: perfilEncontrado,
-                        error: errorPerfil
-                    } =
-                        await supabaseClient
-                            .from("perfiles")
-                            .select("*")
-                            .eq(
-                                "id",
-                                usuarioId
-                            )
-                            .maybeSingle();
-
-
-                    if (
-                        !errorPerfil &&
-                        perfilEncontrado
-                    ) {
-
-                        perfil =
-                            perfilEncontrado;
-
-                    } else if (
-                        errorPerfil
-                    ) {
-
-                        console.warn(
-                            "⚠️ No se pudo buscar perfil por ID:",
-                            errorPerfil
-                        );
-                    }
-                }
-
-
-                /* =========================================
-                   8. BUSCAR POR CORREO
-                   
-                   Aquí NO usamos:
-                   .select('id,"correo","email"')
-
-                   porque eso falla si alguna columna
-                   no existe.
-
-                   Obtenemos los perfiles y buscamos
-                   diferentes nombres posibles.
-                ========================================= */
-
-                if (
-                    !perfil &&
-                    pedido.cliente_correo
-                ) {
-
-                    const correoPedido =
-                        String(
-                            pedido.cliente_correo
-                        )
-                            .trim()
-                            .toLowerCase();
-
-
-                    console.log(
-                        "🔎 Buscando cliente por correo:",
-                        correoPedido
-                    );
-
-
-                    const {
-                        data: perfiles,
-                        error: errorPerfiles
-                    } =
-                        await supabaseClient
-                            .from("perfiles")
-                            .select("*");
-
-
-                    if (
-                        errorPerfiles
-                    ) {
-
-                        console.warn(
-                            "⚠️ No se pudieron obtener perfiles:",
-                            errorPerfiles
-                        );
-
-                    } else {
-
-                        perfil =
-                            (perfiles || [])
-                                .find(
-                                    function (p) {
-
-                                        const posiblesCorreos = [
-
-                                            p.email,
-
-                                            p.correo,
-
-                                            p.correo_electronico,
-
-                                            p.email_usuario,
-
-                                            p.correo_usuario
-
-                                        ];
-
-
-                                        return posiblesCorreos
-                                            .some(
-                                                function (correo) {
-
-                                                    return (
-                                                        String(
-                                                            correo || ""
-                                                        )
-                                                            .trim()
-                                                            .toLowerCase() ===
-                                                        correoPedido
-                                                    );
-                                                }
-                                            );
-                                    }
-                                ) || null;
-
-
-                        if (perfil) {
-
-                            usuarioId =
-                                perfil.id;
-
-
-                            console.log(
-                                "✅ Perfil encontrado por correo:",
-                                perfil
-                            );
-                        }
-                    }
-                }
-
-
-                /* =========================================
-                   9. ÚLTIMO INTENTO:
-                      BUSCAR POR NOMBRE
-                ========================================= */
-
-                if (
-                    !perfil &&
-                    pedido.cliente_nombre
-                ) {
-
-                    const nombrePedido =
-                        String(
-                            pedido.cliente_nombre
-                        )
-                            .trim()
-                            .toLowerCase();
-
-
-                    console.log(
-                        "🔎 Buscando cliente por nombre:",
-                        nombrePedido
-                    );
-
-
-                    const {
-                        data: perfiles,
-                        error: errorPerfiles
-                    } =
-                        await supabaseClient
-                            .from("perfiles")
-                            .select("*");
-
-
-                    if (
-                        !errorPerfiles
-                    ) {
-
-                        perfil =
-                            (perfiles || [])
-                                .find(
-                                    function (p) {
-
-                                        const nombres = [
-
-                                            p.nombre,
-
-                                            p.nombre_completo,
-
-                                            p.nombre_usuario,
-
-                                            p.usuario,
-
-                                            p.full_name
-
-                                        ];
-
-
-                                        return nombres
-                                            .some(
-                                                function (nombre) {
-
-                                                    return (
-                                                        String(
-                                                            nombre || ""
-                                                        )
-                                                            .trim()
-                                                            .toLowerCase() ===
-                                                        nombrePedido
-                                                    );
-                                                }
-                                            );
-                                    }
-                                ) || null;
-
-
-                        if (perfil) {
-
-                            usuarioId =
-                                perfil.id;
-
-
-                            console.log(
-                                "✅ Perfil encontrado por nombre:",
-                                perfil
-                            );
-                        }
-                    }
-                }
-
-
-                /* =========================================
-                   10. SI NO EXISTE PERFIL
-                ========================================= */
-
-                if (
-                    !perfil
-                ) {
-
-                    console.error(
-                        "❌ No se encontró perfil para el pedido:",
-                        pedido
-                    );
-
-
-                    alert(
-                        "No se encontró el perfil del cliente.\n\n" +
-
-                        "Pedido: #" +
-                        pedido.id +
-
-                        "\nCliente: " +
-                        (
-                            pedido.cliente_nombre ||
-                            "Sin nombre"
-                        ) +
-
-                        "\nCorreo: " +
-                        (
-                            pedido.cliente_correo ||
-                            "Sin correo"
-                        ) +
-
-                        "\n\n" +
-
-                        "Verifica que el cliente tenga un registro en la tabla perfiles."
+                        "La compra mínima para generar puntos es de Q10.00."
                     );
 
 
@@ -3406,27 +3867,83 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
 
-                /* =========================================
-                   11. OBTENER ID REAL DEL PERFIL
-                ========================================= */
+                /* ==========================================
+                   5. OBTENER USUARIO
+                ========================================== */
 
-                usuarioId =
-                    perfil.id;
+                const usuarioId =
+                    pedido.usuario_id;
 
 
                 if (!usuarioId) {
 
                     alert(
-                        "El perfil encontrado no tiene un ID válido."
+                        "Este pedido no tiene usuario_id."
                     );
+
+
+                    console.error(
+                        "Pedido sin usuario_id:",
+                        pedido
+                    );
+
 
                     return;
                 }
 
 
-                /* =========================================
-                   12. OBTENER PUNTOS ACTUALES
-                ========================================= */
+                /* ==========================================
+                   6. OBTENER PERFIL
+                ========================================== */
+
+                const {
+                    data: perfil,
+                    error: errorPerfil
+                } =
+                    await supabaseClient
+                        .from("perfiles")
+                        .select(
+                            'id,"Puntos"'
+                        )
+                        .eq(
+                            "id",
+                            usuarioId
+                        )
+                        .maybeSingle();
+
+
+                if (errorPerfil) {
+
+                    console.error(
+                        "❌ Error buscando perfil:",
+                        errorPerfil
+                    );
+
+
+                    alert(
+                        "No se pudo obtener el perfil del cliente.\n\n" +
+                        errorPerfil.message
+                    );
+
+
+                    return;
+                }
+
+
+                if (!perfil) {
+
+                    alert(
+                        "No existe un perfil para este usuario."
+                    );
+
+
+                    return;
+                }
+
+
+                /* ==========================================
+                   7. PUNTOS ACTUALES
+                ========================================== */
 
                 const puntosActuales =
                     Number(
@@ -3439,28 +3956,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     puntos;
 
 
-                console.log(
-                    "⭐ PUNTOS",
-                    {
-                        anteriores:
-                            puntosActuales,
-
-                        generados:
-                            puntos,
-
-                        nuevos:
-                            nuevosPuntos
-                    }
-                );
-
-
-                /* =========================================
-                   13. ACTUALIZAR PUNTOS
-                ========================================= */
+                /* ==========================================
+                   8. ACTUALIZAR PUNTOS
+                ========================================== */
 
                 const {
-                    error:
-                    errorActualizarPerfil
+                    error: errorActualizarPerfil
                 } =
                     await supabaseClient
                         .from("perfiles")
@@ -3491,17 +3992,17 @@ document.addEventListener("DOMContentLoaded", function () {
                         errorActualizarPerfil.message
                     );
 
+
                     return;
                 }
 
 
-                /* =========================================
-                   14. MARCAR PEDIDO
-                ========================================= */
+                /* ==========================================
+                   9. MARCAR PEDIDO COMO VALIDADO
+                ========================================== */
 
                 const {
-                    error:
-                    errorValidarPedido
+                    error: errorValidarPedido
                 } =
                     await supabaseClient
                         .from("pedidos")
@@ -3533,53 +4034,70 @@ document.addEventListener("DOMContentLoaded", function () {
                     );
 
 
-                    alert(
-                        "Los puntos fueron agregados correctamente, " +
-                        "pero no se pudo marcar el pedido como validado.\n\n" +
-                        errorValidarPedido.message
-                    );
+                    /*
+                       IMPORTANTE:
+
+                       Intentamos devolver los puntos
+                       si el pedido no pudo marcarse
+                       como validado.
+                    */
+
+                    const {
+                        error: errorReversion
+                    } =
+                        await supabaseClient
+                            .from("perfiles")
+                            .update({
+
+                                "Puntos":
+                                    puntosActuales
+
+                            })
+                            .eq(
+                                "id",
+                                usuarioId
+                            );
+
+
+                    if (errorReversion) {
+
+                        console.error(
+                            "❌ ERROR CRÍTICO: no se pudieron revertir los puntos:",
+                            errorReversion
+                        );
+
+
+                        alert(
+                            "Los puntos fueron agregados, pero ocurrió un error al marcar el pedido.\n\n" +
+                            "NO vuelvas a pulsar 'Dar puntos' hasta revisar el pedido."
+                        );
+
+                    } else {
+
+                        alert(
+                            "No se pudo validar el pedido.\n\n" +
+                            "Los puntos fueron restaurados y no se otorgaron."
+                        );
+                    }
+
 
                     return;
                 }
 
 
-                /* =========================================
-                   15. ÉXITO
-                ========================================= */
+                /* ==========================================
+                   10. ÉXITO
+                ========================================== */
 
                 alert(
-                    "⭐ PUNTOS OTORGADOS CORRECTAMENTE\n\n" +
-
-                    "Pedido: #" +
-                    pedido.id +
-
-                    "\nCliente: " +
-                    (
-                        pedido.cliente_nombre ||
-                        "Cliente"
-                    ) +
-
-                    "\n\nVenta: " +
-                    dinero(total) +
-
-                    "\n5% de la venta: " +
+                    "PUNTOS OTORGADOS CORRECTAMENTE.\n\n" +
+                    "Puntos agregados: " +
                     puntos +
-                    " puntos" +
-
-                    "\nValor de los puntos: " +
-                    dinero(puntos) +
-
-                    "\n\nPuntos anteriores: " +
-                    puntosActuales +
-
-                    "\nPuntos nuevos: " +
+                    "\n" +
+                    "Puntos actuales: " +
                     nuevosPuntos
                 );
 
-
-                /* =========================================
-                   16. RECARGAR PEDIDOS
-                ========================================= */
 
                 await cargarPedidos();
 
@@ -3587,17 +4105,14 @@ document.addEventListener("DOMContentLoaded", function () {
             } catch (error) {
 
                 console.error(
-                    "❌ ERROR COMPLETO DANDO PUNTOS:",
+                    "❌ Error inesperado dando puntos:",
                     error
                 );
 
 
                 alert(
                     "Ocurrió un error al otorgar los puntos.\n\n" +
-                    (
-                        error?.message ||
-                        "Error desconocido."
-                    )
+                    error.message
                 );
             }
         };
@@ -3624,9 +4139,25 @@ document.addEventListener("DOMContentLoaded", function () {
                     ano < 1900
                 ) {
 
+                    console.warn(
+                        "⚠️ Año recibido no válido:",
+                        evento?.detail?.año
+                    );
+
+
                     return;
                 }
 
+
+                console.log(
+                    "📅 Año seleccionado:",
+                    ano
+                );
+
+
+                /* =========================================
+                   GUARDAR AÑO
+                ========================================= */
 
                 localStorage.setItem(
                     ANO_KEY,
@@ -3635,6 +4166,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     )
                 );
 
+
+                /* =========================================
+                   ACTUALIZAR TEXTO
+                ========================================= */
 
                 const anoTexto =
                     document.getElementById(
@@ -3649,16 +4184,51 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
 
+                /* =========================================
+                   ACTUALIZAR DASHBOARD
+                ========================================= */
+
                 await actualizarDashboard();
+
+
+                /* =========================================
+                   ACTUALIZAR EGRESOS
+                ========================================= */
 
                 mostrarEgresos();
 
+
+                /* =========================================
+                   ACTUALIZAR INGRESOS
+                ========================================= */
+
                 await cargarIngresos();
+
+
+                /* =========================================
+                   ACTUALIZAR VENTAS
+                ========================================= */
 
                 await cargarVentas();
 
+
+                /* =========================================
+                   ACTUALIZAR PEDIDOS
+                ========================================= */
+
                 await cargarPedidos();
 
+
+                /* =========================================
+                   ACTUALIZAR STOCK
+                ========================================= */
+
+                await cargarStock();
+
+
+                /* =========================================
+                   AVISAR OTROS SCRIPTS
+                ========================================= */
 
                 window.dispatchEvent(
                     new CustomEvent(
@@ -3672,13 +4242,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
 
 
+                console.log(
+                    "✅ DL Luxury actualizado completamente para:",
+                    ano
+                );
+
+
             } catch (error) {
 
                 console.error(
-                    "❌ Error actualizando año:",
+                    "❌ Error actualizando Dashboard por cambio de año:",
                     error
                 );
             }
+
         }
     );
 
@@ -3727,15 +4304,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
         await llenarSelectorAnios();
 
+
         await cargarStock();
+
 
         await actualizarDashboard();
 
+
         await cargarVentas();
+
 
         await cargarIngresos();
 
+
         mostrarEgresos();
+
 
         await cargarPedidos();
 
@@ -3756,37 +4339,69 @@ document.addEventListener("DOMContentLoaded", function () {
     window.cargarStock =
         cargarStock;
 
+
     window.cargarVentas =
         cargarVentas;
+
 
     window.cargarIngresos =
         cargarIngresos;
 
+
     window.mostrarEgresos =
         mostrarEgresos;
+
 
     window.actualizarDashboard =
         actualizarDashboard;
 
+
     window.llenarSelectorAnios =
         llenarSelectorAnios;
+
 
     window.obtenerPedidosConfirmados =
         obtenerPedidosConfirmados;
 
+
     window.cargarPedidos =
         cargarPedidos;
+
 
     window.obtenerProductosPedido =
         obtenerProductosPedido;
 
+
     window.obtenerCantidadProductosPedido =
         obtenerCantidadProductosPedido;
+
 
     window.obtenerTotalPedido =
         obtenerTotalPedido;
 
+
     window.obtenerAnoSeleccionado =
         obtenerAnoSeleccionado;
+
+
+    window.calcularPuntos =
+        calcularPuntos;
+
+
+    /* =====================================================
+       EXPONER FUNCIONES DE STOCK
+    ===================================================== */
+
+    window.descontarStockPedido =
+        descontarStockPedido;
+
+
+    window.prepararProductosParaStock =
+        prepararProductosParaStock;
+
+
+    console.log(
+        "✅ admin.js cargado correctamente."
+    );
 
 });
